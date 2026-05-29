@@ -649,7 +649,7 @@
 
 <script>
 // ── APPS SCRIPT ENDPOINT ────────────────────────────────────
-const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxGZjIBuGOCl96KfwaaGG-Sw4ox6ZPQLn_NQGF4oT7lC9jXw3imW0aRjWqRdiCr9iwt/exec';
+const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbyBOv35IGPjCbpEjVvOOVncej4FealknCg3GgCaPgEQs6jvmIDfS-SF0RYL9WLKTK_o/exec';
 const SECRET_TOKEN = 'martinez-obra-2026';
 
 // ── STATE ────────────────────────────────────────────────────
@@ -685,13 +685,41 @@ function parseNum(v) {
 }
 
 // ── FETCH VIA APPS SCRIPT ────────────────────────────────────
-async function fetchFromAppsScript() {
-  const url = APPS_SCRIPT_URL + '?token=' + SECRET_TOKEN;
-  const res = await fetch(url, { redirect: 'follow' });
-  if (!res.ok) throw new Error('HTTP ' + res.status);
-  const data = await res.json();
-  if (data.error) throw new Error(data.error);
-  return data;
+function fetchFromAppsScript() {
+  return new Promise((resolve, reject) => {
+    const callbackName = 'cb_' + Date.now();
+    const script = document.createElement('script');
+
+    const timeout = setTimeout(() => {
+      delete window[callbackName];
+      if (script.parentNode) document.head.removeChild(script);
+      reject(new Error('Timeout'));
+    }, 20000);
+
+    window[callbackName] = function(data) {
+      clearTimeout(timeout);
+      delete window[callbackName];
+      if (script.parentNode) document.head.removeChild(script);
+      if (data && data.error) { reject(new Error(data.error)); return; }
+      resolve(data);
+    };
+
+    // Google redirige el script — usar onload en vez de onerror
+    script.onload = function() {
+      // Si después de cargar no se llamó el callback, esperar un poco más
+      setTimeout(() => {
+        if (window[callbackName]) {
+          // callback aún existe = no se llamó = problema real
+          clearTimeout(timeout);
+          delete window[callbackName];
+          reject(new Error('El script cargó pero no devolvió datos'));
+        }
+      }, 3000);
+    };
+
+    script.src = APPS_SCRIPT_URL + '?token=' + SECRET_TOKEN + '&callback=' + callbackName;
+    document.head.appendChild(script);
+  });
 }
 
 // ── SYNC ─────────────────────────────────────────────────────
