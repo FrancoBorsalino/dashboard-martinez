@@ -707,7 +707,7 @@ function fetchFromAppsScript() {
     };
 
     script.src = APPS_SCRIPT_URL + '?token=' + SECRET_TOKEN + '&callback=' + callbackName;
-    script.onerror = () => { cleanup(); reject(new Error('No se pudo cargar el script. Verificá que la Web App esté publicada correctamente.')); };
+    script.onerror = () => { /* ignorar onerror — Google redirige antes de ejecutar */ };
     document.head.appendChild(script);
   });
 }
