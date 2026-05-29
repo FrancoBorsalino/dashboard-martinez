@@ -1,0 +1,1236 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Dashboard de Obra — Martínez · Eduardo Costa 1918</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Syne:wght@400;600;700;800&display=swap');
+
+  :root {
+    --bg: #0f0f10;
+    --surface: #18181b;
+    --surface2: #1f1f24;
+    --border: #2a2a32;
+    --accent: #e8d5a3;
+    --accent2: #c8a96e;
+    --green: #6fcf8e;
+    --red: #e07070;
+    --blue: #7eb8d4;
+    --text: #f0ede6;
+    --muted: #8a8790;
+    --font-display: 'Syne', sans-serif;
+    --font-mono: 'DM Mono', monospace;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--font-display);
+    min-height: 100vh;
+    padding: 0;
+  }
+
+  /* ── HEADER ── */
+  header {
+    border-bottom: 1px solid var(--border);
+    padding: 20px 40px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 12px;
+    background: var(--surface);
+  }
+
+  .header-left h1 {
+    font-size: 1.4rem;
+    font-weight: 800;
+    letter-spacing: -0.02em;
+    color: var(--accent);
+  }
+  .header-left p {
+    font-size: 0.78rem;
+    color: var(--muted);
+    font-family: var(--font-mono);
+    margin-top: 2px;
+  }
+
+  .header-right {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+
+  .dolar-badge {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 6px 12px;
+    font-family: var(--font-mono);
+    font-size: 0.8rem;
+    color: var(--accent);
+  }
+
+  #sync-btn {
+    background: var(--accent);
+    color: var(--bg);
+    border: none;
+    border-radius: 6px;
+    padding: 8px 18px;
+    font-family: var(--font-display);
+    font-weight: 700;
+    font-size: 0.85rem;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    transition: background 0.2s, transform 0.1s;
+  }
+  #sync-btn:hover { background: var(--accent2); }
+  #sync-btn:active { transform: scale(0.97); }
+  #sync-btn .icon { font-size: 1rem; }
+  #sync-btn.loading .icon { animation: spin 1s linear infinite; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  #last-updated {
+    font-family: var(--font-mono);
+    font-size: 0.72rem;
+    color: var(--muted);
+  }
+
+  /* ── MAIN LAYOUT ── */
+  main {
+    padding: 28px 40px;
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
+  }
+
+  /* ── STATUS BAR ── */
+  .status-bar {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 14px 22px;
+    display: flex;
+    align-items: center;
+    gap: 20px;
+    flex-wrap: wrap;
+  }
+  .status-dot {
+    width: 9px; height: 9px;
+    border-radius: 50%;
+    background: var(--green);
+    box-shadow: 0 0 8px var(--green);
+  }
+  .status-bar span { font-size: 0.82rem; color: var(--muted); font-family: var(--font-mono); }
+  .status-bar strong { color: var(--text); }
+
+  /* ── KPI GRID ── */
+  .kpi-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+    gap: 14px;
+  }
+
+  .kpi-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    position: relative;
+    overflow: hidden;
+  }
+  .kpi-card::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 2px;
+    background: var(--accent);
+    opacity: 0.4;
+  }
+  .kpi-card.highlight::before { background: var(--green); opacity: 0.9; }
+  .kpi-card.warn::before { background: var(--accent2); opacity: 0.9; }
+
+  .kpi-label {
+    font-size: 0.7rem;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: var(--muted);
+    font-family: var(--font-mono);
+  }
+  .kpi-value {
+    font-size: 1.65rem;
+    font-weight: 800;
+    letter-spacing: -0.03em;
+    color: var(--text);
+    line-height: 1;
+  }
+  .kpi-value.big { font-size: 1.4rem; }
+  .kpi-sub {
+    font-size: 0.75rem;
+    color: var(--muted);
+    font-family: var(--font-mono);
+  }
+  .kpi-sub.pos { color: var(--green); }
+  .kpi-sub.neg { color: var(--red); }
+
+  /* ── PROGRESS BAR ── */
+  .progress-section {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 22px 26px;
+  }
+  .progress-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    margin-bottom: 16px;
+  }
+  .progress-header h2 {
+    font-size: 0.95rem;
+    font-weight: 700;
+    color: var(--text);
+  }
+  .progress-header span {
+    font-family: var(--font-mono);
+    font-size: 0.78rem;
+    color: var(--muted);
+  }
+
+  .progress-track {
+    background: var(--surface2);
+    border-radius: 4px;
+    height: 10px;
+    margin-bottom: 8px;
+    overflow: hidden;
+    position: relative;
+  }
+  .progress-real {
+    height: 100%;
+    background: linear-gradient(90deg, var(--accent2), var(--accent));
+    border-radius: 4px;
+    transition: width 0.8s ease;
+  }
+  .progress-teorico-mark {
+    position: absolute;
+    top: -3px;
+    height: 16px;
+    width: 2px;
+    background: var(--blue);
+    border-radius: 1px;
+  }
+  .progress-legend {
+    display: flex;
+    gap: 16px;
+    margin-top: 6px;
+  }
+  .legend-item {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 0.72rem;
+    color: var(--muted);
+    font-family: var(--font-mono);
+  }
+  .legend-dot {
+    width: 8px; height: 8px;
+    border-radius: 2px;
+  }
+
+  /* ── CHARTS ROW ── */
+  .charts-row {
+    display: grid;
+    grid-template-columns: 2fr 1fr;
+    gap: 14px;
+  }
+
+  .chart-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 22px;
+  }
+  .chart-card h2 {
+    font-size: 0.85rem;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--muted);
+    margin-bottom: 18px;
+    font-family: var(--font-mono);
+  }
+  .chart-wrap {
+    position: relative;
+    height: 260px;
+  }
+
+  /* ── PAGOS TABLE ── */
+  .table-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 22px;
+    overflow: hidden;
+  }
+  .table-card h2 {
+    font-size: 0.85rem;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--muted);
+    margin-bottom: 16px;
+    font-family: var(--font-mono);
+  }
+  .table-wrap { overflow-x: auto; }
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.82rem;
+  }
+  thead th {
+    text-align: left;
+    font-family: var(--font-mono);
+    font-size: 0.68rem;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--muted);
+    padding: 8px 12px;
+    border-bottom: 1px solid var(--border);
+  }
+  tbody tr {
+    border-bottom: 1px solid var(--border);
+    transition: background 0.15s;
+  }
+  tbody tr:hover { background: var(--surface2); }
+  tbody tr:last-child { border-bottom: none; }
+  td {
+    padding: 10px 12px;
+    vertical-align: middle;
+  }
+  .td-monto {
+    font-family: var(--font-mono);
+    font-weight: 500;
+    color: var(--accent);
+    text-align: right;
+  }
+  .td-num {
+    font-family: var(--font-mono);
+    color: var(--muted);
+    text-align: right;
+  }
+  .td-date { font-family: var(--font-mono); color: var(--muted); font-size: 0.76rem; }
+  .badge-pagado {
+    background: rgba(111,207,142,0.12);
+    color: var(--green);
+    border: 1px solid rgba(111,207,142,0.3);
+    border-radius: 4px;
+    padding: 2px 8px;
+    font-size: 0.68rem;
+    font-family: var(--font-mono);
+    text-transform: uppercase;
+  }
+  .badge-recibo {
+    background: rgba(232,213,163,0.1);
+    color: var(--accent);
+    border: 1px solid rgba(232,213,163,0.25);
+    border-radius: 4px;
+    padding: 2px 8px;
+    font-size: 0.68rem;
+    font-family: var(--font-mono);
+  }
+
+  /* ── PROYECCION ── */
+  .proyeccion-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 22px;
+  }
+  .proyeccion-card h2 {
+    font-size: 0.85rem;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--muted);
+    margin-bottom: 18px;
+    font-family: var(--font-mono);
+  }
+  .slider-group {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 18px;
+    margin-bottom: 20px;
+  }
+  .slider-label {
+    font-size: 0.72rem;
+    color: var(--muted);
+    font-family: var(--font-mono);
+    text-transform: uppercase;
+    letter-spacing: 0.07em;
+    margin-bottom: 8px;
+    display: flex;
+    justify-content: space-between;
+  }
+  .slider-label span { color: var(--accent); font-weight: 500; }
+  input[type=range] {
+    width: 100%;
+    accent-color: var(--accent2);
+  }
+  .proyeccion-results {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 12px;
+    border-top: 1px solid var(--border);
+    padding-top: 16px;
+  }
+  .proy-item { text-align: center; }
+  .proy-item .val {
+    font-size: 1.15rem;
+    font-weight: 700;
+    color: var(--accent);
+  }
+  .proy-item .lbl {
+    font-size: 0.65rem;
+    text-transform: uppercase;
+    color: var(--muted);
+    font-family: var(--font-mono);
+    letter-spacing: 0.06em;
+    margin-top: 3px;
+  }
+
+  /* ── SEDES ── */
+  .sedes-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 14px;
+  }
+  .sede-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 18px 20px;
+  }
+  .sede-card h3 {
+    font-size: 0.95rem;
+    font-weight: 700;
+    color: var(--text);
+    margin-bottom: 12px;
+  }
+  .sede-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    padding: 5px 0;
+    border-bottom: 1px solid var(--border);
+    font-size: 0.78rem;
+  }
+  .sede-row:last-child { border-bottom: none; }
+  .sede-row .k { color: var(--muted); font-family: var(--font-mono); font-size: 0.7rem; }
+  .sede-row .v { color: var(--accent); font-family: var(--font-mono); font-weight: 500; }
+
+  /* ── CONFIG PANEL ── */
+  .config-banner {
+    background: rgba(232,213,163,0.05);
+    border: 1px dashed rgba(232,213,163,0.25);
+    border-radius: 10px;
+    padding: 16px 22px;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    flex-wrap: wrap;
+  }
+  .config-banner p {
+    font-size: 0.8rem;
+    color: var(--muted);
+    flex: 1;
+    min-width: 200px;
+  }
+  .config-banner input {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 7px 12px;
+    color: var(--text);
+    font-family: var(--font-mono);
+    font-size: 0.78rem;
+    width: 360px;
+    max-width: 100%;
+  }
+  .config-banner input:focus { outline: 1px solid var(--accent2); }
+
+  /* ── ERROR MSG ── */
+  #error-msg {
+    display: none;
+    background: rgba(224,112,112,0.1);
+    border: 1px solid rgba(224,112,112,0.3);
+    border-radius: 8px;
+    padding: 12px 18px;
+    color: var(--red);
+    font-size: 0.82rem;
+    font-family: var(--font-mono);
+  }
+
+  @media (max-width: 800px) {
+    main { padding: 16px 16px; }
+    header { padding: 14px 16px; }
+    .charts-row { grid-template-columns: 1fr; }
+    .sedes-grid { grid-template-columns: 1fr; }
+    .slider-group { grid-template-columns: 1fr; }
+    .proyeccion-results { grid-template-columns: 1fr 1fr; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="header-left">
+    <h1>MARTÍNEZ · EDUARDO COSTA 1918</h1>
+    <p>Dashboard de Avance de Obra · 2026</p>
+  </div>
+  <div class="header-right">
+    <div class="dolar-badge">USD <strong id="cotiz">$1.425</strong></div>
+    <div id="last-updated">—</div>
+    <button id="sync-btn" onclick="syncData()">
+      <span class="icon">↻</span> Actualizar datos
+    </button>
+  </div>
+</header>
+
+<main>
+
+  <!-- CONFIG -->
+  <div class="config-banner">
+    <p>🔗 Conectado via <strong>Apps Script</strong> — el sheet permanece privado. Presioná "Actualizar datos" para sincronizar en cualquier momento.</p>
+    <div style="font-family:var(--font-mono);font-size:0.72rem;color:var(--accent2);background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:7px 12px;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">
+      ✓ Apps Script endpoint configurado
+    </div>
+  </div>
+
+  <div id="error-msg"></div>
+
+  <!-- STATUS -->
+  <div class="status-bar">
+    <div class="status-dot"></div>
+    <span>Inicio obra: <strong id="s-inicio">—</strong></span>
+    <span>Fin programado: <strong id="s-fin">—</strong></span>
+    <span>Días transcurridos: <strong id="s-dias">—</strong> / <strong id="s-total">65</strong></span>
+    <span>Generado: <strong id="s-gen">—</strong></span>
+  </div>
+
+  <!-- KPIs -->
+  <div class="kpi-grid">
+    <div class="kpi-card">
+      <div class="kpi-label">Presupuesto Total</div>
+      <div class="kpi-value big" id="kpi-presup">—</div>
+      <div class="kpi-sub" id="kpi-presup-usd">—</div>
+    </div>
+    <div class="kpi-card highlight">
+      <div class="kpi-label">Total Ejecutado</div>
+      <div class="kpi-value big" id="kpi-ejecutado">—</div>
+      <div class="kpi-sub" id="kpi-ejecutado-usd">—</div>
+    </div>
+    <div class="kpi-card highlight">
+      <div class="kpi-label">% Avance Real</div>
+      <div class="kpi-value" id="kpi-avance-pct">—</div>
+      <div class="kpi-sub" id="kpi-avance-teo">Teórico: —</div>
+    </div>
+    <div class="kpi-card warn">
+      <div class="kpi-label">Desvío vs Teórico</div>
+      <div class="kpi-value big" id="kpi-desvio">—</div>
+      <div class="kpi-sub pos">Adelanto de ejecución</div>
+    </div>
+    <div class="kpi-card">
+      <div class="kpi-label">Saldo Pendiente</div>
+      <div class="kpi-value big" id="kpi-saldo">—</div>
+      <div class="kpi-sub" id="kpi-saldo-usd">—</div>
+    </div>
+    <div class="kpi-card">
+      <div class="kpi-label">Ritmo Diario Teórico</div>
+      <div class="kpi-value big" id="kpi-ritmo">—</div>
+      <div class="kpi-sub">pesos / día</div>
+    </div>
+  </div>
+
+  <!-- BARRA AVANCE -->
+  <div class="progress-section">
+    <div class="progress-header">
+      <h2>Avance Real vs Teórico Lineal</h2>
+      <span id="prog-label">—</span>
+    </div>
+    <div class="progress-track" style="margin-bottom:6px">
+      <div class="progress-real" id="prog-real" style="width:0%"></div>
+      <div class="progress-teorico-mark" id="prog-teo-mark" style="left:0%"></div>
+    </div>
+    <div class="progress-legend">
+      <div class="legend-item"><div class="legend-dot" style="background: var(--accent)"></div> Real (<span id="leg-real">0%</span>)</div>
+      <div class="legend-item"><div class="legend-dot" style="background: var(--blue)"></div> Teórico lineal (<span id="leg-teo">0%</span>)</div>
+      <div class="legend-item"><div class="legend-dot" style="background: var(--border)"></div> Presupuesto total ($89.7M)</div>
+    </div>
+  </div>
+
+  <!-- CHARTS -->
+  <div class="charts-row">
+    <div class="chart-card">
+      <h2>Curva de Avance — Real vs Teórico</h2>
+      <div class="chart-wrap"><canvas id="curvaChart"></canvas></div>
+    </div>
+    <div class="chart-card">
+      <h2>Distribución por Sede</h2>
+      <div class="chart-wrap"><canvas id="sedeChart"></canvas></div>
+    </div>
+  </div>
+
+  <!-- SEDES -->
+  <div class="sedes-grid" id="sedes-container">
+    <!-- generado por JS -->
+  </div>
+
+  <!-- PROYECCION INTERACTIVA -->
+  <div class="proyeccion-card">
+    <h2>Herramienta de Proyección</h2>
+    <div class="slider-group">
+      <div>
+        <div class="slider-label">Ritmo de gasto semanal <span id="lbl-ritmo">$8.0M</span></div>
+        <input type="range" id="sl-ritmo" min="1" max="30" step="0.5" value="8">
+      </div>
+      <div>
+        <div class="slider-label">Cotización dólar proyectada <span id="lbl-dolar">$1.425</span></div>
+        <input type="range" id="sl-dolar" min="1000" max="3000" step="25" value="1425">
+      </div>
+    </div>
+    <div class="proyeccion-results">
+      <div class="proy-item">
+        <div class="val" id="proy-fin">—</div>
+        <div class="lbl">Fin estimado</div>
+      </div>
+      <div class="proy-item">
+        <div class="val" id="proy-costo-total">—</div>
+        <div class="lbl">Costo total proyectado</div>
+      </div>
+      <div class="proy-item">
+        <div class="val" id="proy-usd">—</div>
+        <div class="lbl">Equiv. USD proyectado</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- TABLA PAGOS -->
+  <div class="table-card">
+    <h2>Detalle de Pagos Realizados</h2>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Descripción</th>
+            <th>Tipo</th>
+            <th>N° Doc</th>
+            <th>Fecha</th>
+            <th>Razón Social</th>
+            <th style="text-align:right">Monto</th>
+            <th style="text-align:right">% Av.</th>
+            <th style="text-align:right">Acumulado</th>
+            <th>Estado</th>
+          </tr>
+        </thead>
+        <tbody id="pagos-body">
+          <tr><td colspan="9" style="text-align:center;color:var(--muted);padding:30px;font-family:var(--font-mono)">Presioná "Actualizar datos" para cargar →</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+</main>
+
+<script>
+// ── APPS SCRIPT ENDPOINT ────────────────────────────────────
+const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbyBOv35IGPjCbpEjVvOOVncej4FealknCg3GgCaPgEQs6jvmIDfS-SF0RYL9WLKTK_o/exec';
+const SECRET_TOKEN = 'martinez-obra-2026';
+
+// ── STATE ────────────────────────────────────────────────────
+let curvaChart = null;
+let sedeChart = null;
+let state = {};
+
+// ── UTILS ────────────────────────────────────────────────────
+function fmt(n, decimals=0) {
+  if (isNaN(n) || n === null || n === undefined) return '—';
+  return '$' + Number(n).toLocaleString('es-AR', { minimumFractionDigits: decimals, maximumFractionDigits: decimals });
+}
+function fmtPct(n) {
+  if (isNaN(n) || n === null) return '—';
+  return (n * 100).toFixed(2) + '%';
+}
+function fmtDate(d) {
+  if (!d) return '—';
+  if (d instanceof Date) return d.toLocaleDateString('es-AR');
+  return d;
+}
+// Convierte serial Excel a Date
+function excelSerial(serial) {
+  if (!serial || isNaN(serial)) return null;
+  const d = new Date(Math.round((serial - 25569) * 864e5));
+  return d.toLocaleDateString('es-AR');
+}
+function parseNum(v) {
+  if (v === null || v === undefined || v === '') return null;
+  if (typeof v === 'number') return v;
+  const s = String(v).replace(/\./g,'').replace(',','.');
+  return parseFloat(s);
+}
+
+// ── FETCH VIA APPS SCRIPT ────────────────────────────────────
+function fetchFromAppsScript() {
+  return new Promise((resolve, reject) => {
+    const callbackName = 'cb_' + Date.now();
+    const script = document.createElement('script');
+
+    const timeout = setTimeout(() => {
+      delete window[callbackName];
+      if (script.parentNode) document.head.removeChild(script);
+      reject(new Error('Timeout'));
+    }, 20000);
+
+    window[callbackName] = function(data) {
+      clearTimeout(timeout);
+      delete window[callbackName];
+      if (script.parentNode) document.head.removeChild(script);
+      if (data && data.error) { reject(new Error(data.error)); return; }
+      resolve(data);
+    };
+
+    // Google redirige el script — usar onload en vez de onerror
+    script.onload = function() {
+      // Si después de cargar no se llamó el callback, esperar un poco más
+      setTimeout(() => {
+        if (window[callbackName]) {
+          // callback aún existe = no se llamó = problema real
+          clearTimeout(timeout);
+          delete window[callbackName];
+          reject(new Error('El script cargó pero no devolvió datos'));
+        }
+      }, 3000);
+    };
+
+    script.src = APPS_SCRIPT_URL + '?token=' + SECRET_TOKEN + '&callback=' + callbackName;
+    document.head.appendChild(script);
+  });
+}
+
+// ── SYNC ─────────────────────────────────────────────────────
+async function syncData() {
+  const btn = document.getElementById('sync-btn');
+  btn.classList.add('loading');
+  btn.querySelector('.icon').textContent = '↻';
+  hideError();
+
+  try {
+    const data = await fetchFromAppsScript();
+    const rows = data['Martinez - E. Costa'];
+    if (!rows || rows.length === 0) throw new Error('No se encontró la hoja "Martinez - E. Costa"');
+
+    parseSheetUnificado(rows);
+    renderAll();
+    document.getElementById('last-updated').textContent = 'Actualizado: ' + new Date().toLocaleTimeString('es-AR');
+
+  } catch(e) {
+    showError('Error al conectar: ' + e.message);
+    console.error(e);
+  } finally {
+    btn.classList.remove('loading');
+    btn.querySelector('.icon').textContent = '↻';
+  }
+}
+
+// ── PARSER HOJA UNIFICADA "Martinez - E. Costa" ──────────────
+function parseSheetUnificado(rows) {
+  // Cotización dólar (fila 3, col G = índice 6)
+  for (let i = 0; i < 10; i++) {
+    const v = parseNum(rows[i] && rows[i][6]);
+    if (v && v > 100) { state.cotiz = v; break; }
+  }
+  if (!state.cotiz) state.cotiz = 1425;
+
+  // SEDES — filas 7,8,9 (índice) → Core Indoor, Pilates Hiit, Yoga by CORE
+  const sedeNames = ['Core Indoor', 'Pilates Hiit', 'Yoga by CORE'];
+  const sedes = [];
+  rows.forEach(r => {
+    const name = String(r[0] || '').trim();
+    if (sedeNames.some(s => name === s || name.includes(s))) {
+      const matFact   = parseNum(r[1]) || 0;
+      const matSinFact= parseNum(r[2]) || 0;
+      const moFact    = parseNum(r[3]) || 0;
+      const moSinFact = parseNum(r[4]) || 0;
+      const total     = parseNum(r[5]) || (matFact + matSinFact + moFact + moSinFact);
+      const usd       = parseNum(r[6]) || (total / state.cotiz);
+      sedes.push({ nombre: name, matFact, matSinFact, moFact, moSinFact, total, usd });
+    }
+  });
+  if (sedes.length > 0) state.sedes = sedes;
+
+  // PRESUPUESTO TOTAL — buscar "TOTAL PRESUPUESTO EN PESOS"
+  let presup = 0, presupUsd = 0;
+  rows.forEach(r => {
+    const label = String(r[0] || r[3] || r[4] || '').trim();
+    if (label.includes('TOTAL PRESUPUESTO EN PESOS')) {
+      const v = parseNum(r[5]) || parseNum(r[6]);
+      if (v) presup = v;
+    }
+    if (label.includes('TOTAL PRESUPUESTO EN DÓLARES') || label.includes('TOTAL PRESUPUESTO EN DOLARES')) {
+      const v = parseNum(r[6]) || parseNum(r[5]);
+      if (v) presupUsd = v;
+    }
+  });
+  if (!presup) presup = 89719266.94;
+  if (!presupUsd) presupUsd = presup / state.cotiz;
+
+  // FECHAS — buscar en col A/B
+  let fInicio = '11/05/2026', fFin = '15/07/2026', diasTotal = 65;
+  rows.forEach(r => {
+    const label = String(r[0] || '').trim();
+    if (label === 'Inicio de Obra' && r[1]) {
+      fInicio = parseGSDate(r[1]);
+    }
+    if (label === 'Fin de Obra Programada' && r[1]) {
+      fFin = parseGSDate(r[1]);
+    }
+  });
+
+  // PAGOS — buscar filas con Descripción/monto a partir de fila ~22
+  // Col: A=Descripción, B=Efectivo, C=Factura/Transferencia, D=#Factura, E=FF(fecha), F=Razon Social, G=#, H=Monto, I=Pagado, J=%avance, K=Acumulado
+  const pagos = [];
+  let headerFound = false;
+  rows.forEach(r => {
+    const col0 = String(r[0] || '').trim();
+    if (col0.toLowerCase() === 'descripción') { headerFound = true; return; }
+    if (!headerFound) return;
+    const monto = parseNum(r[7]);
+    const desc = col0;
+    if (!desc || desc.toLowerCase().includes('total') || desc.toLowerCase().includes('dif en')) return;
+    if (monto && !isNaN(monto) && monto > 0) {
+      pagos.push({
+        descripcion: desc,
+        tipo: r[3] ? 'Recibo' : 'Factura',
+        ndoc: String(r[3] || r[2] || '').trim(),
+        fecha: r[4],
+        razon: String(r[5] || '').trim(),
+        monto: monto,
+        estado: String(r[8] || 'Pagado').trim(),
+        pctAv: parseNum(r[9]),
+        acumulado: parseNum(r[10]),
+      });
+    }
+  });
+  if (pagos.length > 0) state.pagos = pagos;
+
+  // TOTALES CALCULADOS
+  const totalEjecutado = pagos.reduce((a, p) => a + (p.monto || 0), 0);
+  const avancePct = presup > 0 ? totalEjecutado / presup : 0;
+
+  // Calcular días transcurridos desde inicio obra
+  let diasTrans = 0;
+  try {
+    const inicioDate = new Date(fInicio.split('/').reverse().join('-'));
+    const hoy = new Date();
+    diasTrans = Math.max(0, Math.floor((hoy - inicioDate) / 864e5));
+    diasTrans = Math.min(diasTrans, diasTotal);
+  } catch(e) {}
+
+  const ritmo = diasTotal > 0 ? presup / diasTotal : 1380296.41;
+  const teoPct = diasTotal > 0 ? (diasTrans / diasTotal) : 0;
+  const teoEjecutado = presup * teoPct;
+  const desvio = totalEjecutado - teoEjecutado;
+  const saldo = presup - totalEjecutado;
+
+  // Construir curva desde pagos
+  const curva = [];
+  let acum = 0;
+  const pagosOrdenados = [...pagos].sort((a,b) => {
+    const da = a.fecha ? new Date(parseGSDate(a.fecha).split('/').reverse().join('-')) : 0;
+    const db = b.fecha ? new Date(parseGSDate(b.fecha).split('/').reverse().join('-')) : 0;
+    return da - db;
+  });
+  pagosOrdenados.forEach(p => {
+    acum += p.monto || 0;
+    const fecha = parseGSDate(p.fecha);
+    // calcular teórico para esa fecha
+    let diasD = 0;
+    try {
+      const inicioDate = new Date(fInicio.split('/').reverse().join('-'));
+      const pagoDate = new Date(fecha.split('/').reverse().join('-'));
+      diasD = Math.max(0, Math.floor((pagoDate - inicioDate) / 864e5));
+    } catch(e) {}
+    const teoAcum = Math.min(ritmo * diasD, presup);
+    curva.push({ fecha, real: acum, teo: teoAcum });
+  });
+  // Agregar punto final teórico
+  curva.push({ fecha: fFin, real: null, teo: presup });
+  state.curva = curva;
+
+  // Guardar KPIs calculados en state
+  state.presup = presup;
+  state.presupUsd = presupUsd;
+  state.ejecutado = totalEjecutado;
+  state.avancePct = avancePct;
+  state.teoPct = teoPct;
+  state.desvio = desvio;
+  state.saldo = saldo;
+  state.ritmo = ritmo;
+  state.diasTrans = diasTrans;
+  state.diasTotal = diasTotal;
+  state.fInicio = fInicio;
+  state.fFin = fFin;
+}
+
+function parseGSDate(v) {
+  if (!v) return '—';
+  if (typeof v === 'string') {
+    // Ya viene como "2026-04-27T03:00:00.000Z"
+    const d = new Date(v);
+    if (!isNaN(d)) return d.toLocaleDateString('es-AR');
+    return v;
+  }
+  if (v instanceof Date) return v.toLocaleDateString('es-AR');
+  if (typeof v === 'number') {
+    const d = new Date(Math.round((v - 25569) * 864e5));
+    return d.toLocaleDateString('es-AR');
+  }
+  return String(v);
+}
+
+function parseSedes(rows) { return state.sedes || []; }
+function parsePagos(rows) { return state.pagos || []; }
+function parseCurva(rows) { return state.curva || []; }
+
+// ── RENDER ───────────────────────────────────────────────────
+function renderAll() {
+  renderKPIs();
+  renderProgress();
+  renderSedes();
+  renderPagos();
+  renderCurvaChart();
+  renderSedeChart();
+  renderProyeccion();
+}
+
+function renderKPIs() {
+  const cotiz    = state.cotiz    || 1425;
+  const presup   = state.presup   || 89719266.94;
+  const presupUsd= state.presupUsd|| presup / cotiz;
+  const ejecutado= state.ejecutado|| 0;
+  const avancePct= state.avancePct|| 0;
+  const teoPct   = state.teoPct   || 0;
+  const desvio   = state.desvio   || 0;
+  const saldo    = state.saldo    || presup - ejecutado;
+  const ritmo    = state.ritmo    || 1380296.41;
+  const diasTrans= state.diasTrans|| 0;
+  const diasTotal= state.diasTotal|| 65;
+  const fInicio  = state.fInicio  || '11/05/2026';
+  const fFin     = state.fFin     || '15/07/2026';
+
+  document.getElementById('cotiz').textContent = fmt(cotiz);
+  document.getElementById('kpi-presup').textContent = fmt(presup);
+  document.getElementById('kpi-presup-usd').textContent = 'USD ' + fmt(presupUsd, 2);
+  document.getElementById('kpi-ejecutado').textContent = fmt(ejecutado);
+  document.getElementById('kpi-ejecutado-usd').textContent = 'USD ' + fmt(ejecutado / cotiz, 2);
+  document.getElementById('kpi-avance-pct').textContent = fmtPct(avancePct);
+  document.getElementById('kpi-avance-teo').textContent = 'Teórico: ' + fmtPct(teoPct);
+  document.getElementById('kpi-desvio').textContent = fmt(desvio);
+  document.getElementById('kpi-saldo').textContent = fmt(saldo);
+  document.getElementById('kpi-saldo-usd').textContent = 'USD ' + fmt(saldo / cotiz, 2);
+  document.getElementById('kpi-ritmo').textContent = fmt(ritmo);
+
+  document.getElementById('s-inicio').textContent = fInicio;
+  document.getElementById('s-fin').textContent = fFin;
+  document.getElementById('s-dias').textContent = diasTrans;
+  document.getElementById('s-total').textContent = diasTotal;
+  document.getElementById('s-gen').textContent = new Date().toLocaleDateString('es-AR');
+}
+
+function renderProgress() {
+  const real = (state.avancePct || 0) * 100;
+  const teo = (state.teoPct || 0) * 100;
+  document.getElementById('prog-real').style.width = real + '%';
+  document.getElementById('prog-teo-mark').style.left = teo + '%';
+  document.getElementById('leg-real').textContent = real.toFixed(2) + '%';
+  document.getElementById('leg-teo').textContent = teo.toFixed(2) + '%';
+  document.getElementById('prog-label').textContent = `Real ${real.toFixed(1)}% · Teórico ${teo.toFixed(1)}%`;
+}
+
+function renderSedes() {
+  const sedes = state.sedes || [
+    { nombre: 'Core Indoor', matFact: 12938007, matSinFact: 3284000, moFact: 4909000, moSinFact: 22054800, total: 43185807, usd: 30305.83 },
+    { nombre: 'Pilates Hiit', matFact: 6920795.9, matSinFact: 1311500, moFact: 0, moSinFact: 10156800, total: 18389095.9, usd: 12904.63 },
+    { nombre: 'Yoga by CORE', matFact: 7122535.44, matSinFact: 1629500, moFact: 2200000, moSinFact: 7579550, total: 18531585.44, usd: 13004.62 },
+  ];
+  const html = sedes.map(s => `
+    <div class="sede-card">
+      <h3>${s.nombre}</h3>
+      <div class="sede-row"><span class="k">Mat. Facturado</span><span class="v">${fmt(s.matFact)}</span></div>
+      <div class="sede-row"><span class="k">Mat. Sin Factura</span><span class="v">${fmt(s.matSinFact)}</span></div>
+      <div class="sede-row"><span class="k">M.O. Facturada</span><span class="v">${fmt(s.moFact)}</span></div>
+      <div class="sede-row"><span class="k">M.O. Sin Factura</span><span class="v">${fmt(s.moSinFact)}</span></div>
+      <div class="sede-row" style="margin-top:6px;border-top:1px solid var(--accent2);padding-top:8px"><span class="k" style="color:var(--accent)">TOTAL</span><span class="v" style="color:var(--accent);font-size:1rem">${fmt(s.total)}</span></div>
+      <div class="sede-row"><span class="k">Equiv. USD</span><span class="v">${'$' + (s.usd || 0).toLocaleString('es-AR', {minimumFractionDigits:2})}</span></div>
+    </div>
+  `).join('');
+  document.getElementById('sedes-container').innerHTML = html;
+}
+
+function renderPagos() {
+  const pagos = state.pagos || defaultPagos();
+  const total = pagos.reduce((a,p) => a + (p.monto||0), 0);
+  let acum = 0;
+  const rows = pagos.map(p => {
+    acum += p.monto || 0;
+    const pctReal = state.presup ? acum / state.presup : 0;
+    const fecha = typeof p.fecha === 'number' ? excelSerial(p.fecha) : (p.fecha || '—');
+    const esRecibo = p.tipo === 'Recibo' || String(p.ndoc).includes('Recibo');
+    return `<tr>
+      <td>${p.descripcion}</td>
+      <td><span class="${esRecibo ? 'badge-recibo' : ''}">${p.tipo || '—'}</span></td>
+      <td class="td-date">${p.ndoc || '—'}</td>
+      <td class="td-date">${fecha}</td>
+      <td>${p.razon || '—'}</td>
+      <td class="td-monto">${fmt(p.monto)}</td>
+      <td class="td-num">${(pctReal*100).toFixed(2)}%</td>
+      <td class="td-num">${fmt(acum)}</td>
+      <td><span class="badge-pagado">${p.estado || 'Pagado'}</span></td>
+    </tr>`;
+  });
+  rows.push(`<tr style="background:var(--surface2)">
+    <td colspan="5" style="font-weight:700;color:var(--accent);padding-top:14px">TOTAL PAGADO</td>
+    <td class="td-monto" style="font-size:1rem;font-weight:700;color:var(--accent)">${fmt(total)}</td>
+    <td colspan="3"></td>
+  </tr>`);
+  document.getElementById('pagos-body').innerHTML = rows.join('');
+}
+
+function renderCurvaChart() {
+  const curva = state.curva || defaultCurva();
+  const presup = state.presup || 89719266.94;
+
+  // Preparar puntos: fechas reales
+  const labels = curva.map(p => {
+    if (typeof p.fecha === 'number') return excelSerial(p.fecha);
+    return p.fecha || '';
+  });
+  const realData = curva.map(p => p.real !== null ? Math.round(p.real) : null);
+  const teoData = curva.map(p => p.teo !== null ? Math.round(p.teo) : null);
+
+  if (curvaChart) { curvaChart.destroy(); }
+
+  const ctx = document.getElementById('curvaChart').getContext('2d');
+  curvaChart = new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels,
+      datasets: [
+        {
+          label: 'Gasto Real',
+          data: realData,
+          borderColor: '#e8d5a3',
+          backgroundColor: 'rgba(232,213,163,0.08)',
+          borderWidth: 2.5,
+          pointBackgroundColor: '#e8d5a3',
+          pointRadius: 4,
+          tension: 0.3,
+          fill: true,
+          spanGaps: true,
+        },
+        {
+          label: 'Teórico Lineal',
+          data: teoData,
+          borderColor: '#7eb8d4',
+          backgroundColor: 'transparent',
+          borderWidth: 1.5,
+          borderDash: [6, 4],
+          pointRadius: 2,
+          tension: 0,
+          spanGaps: true,
+        },
+        {
+          label: 'Presupuesto Total',
+          data: labels.map(() => presup),
+          borderColor: 'rgba(255,255,255,0.1)',
+          backgroundColor: 'transparent',
+          borderWidth: 1,
+          borderDash: [2, 6],
+          pointRadius: 0,
+        }
+      ]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: {
+          labels: { color: '#8a8790', font: { family: 'DM Mono', size: 10 }, boxWidth: 12 }
+        },
+        tooltip: {
+          backgroundColor: '#1f1f24',
+          borderColor: '#2a2a32',
+          borderWidth: 1,
+          titleColor: '#f0ede6',
+          bodyColor: '#8a8790',
+          callbacks: {
+            label: ctx => ctx.dataset.label + ': ' + fmt(ctx.parsed.y)
+          }
+        }
+      },
+      scales: {
+        x: {
+          ticks: { color: '#8a8790', font: { family: 'DM Mono', size: 9 }, maxRotation: 30 },
+          grid: { color: 'rgba(42,42,50,0.5)' },
+        },
+        y: {
+          ticks: {
+            color: '#8a8790',
+            font: { family: 'DM Mono', size: 9 },
+            callback: v => '$' + (v/1e6).toFixed(1) + 'M'
+          },
+          grid: { color: 'rgba(42,42,50,0.5)' },
+        }
+      }
+    }
+  });
+}
+
+function renderSedeChart() {
+  const sedes = state.sedes || [
+    { nombre: 'Core Indoor', total: 43185807 },
+    { nombre: 'Pilates Hiit', total: 18389095.9 },
+    { nombre: 'Yoga by CORE', total: 18531585.44 },
+  ];
+
+  if (sedeChart) { sedeChart.destroy(); }
+  const ctx = document.getElementById('sedeChart').getContext('2d');
+  sedeChart = new Chart(ctx, {
+    type: 'doughnut',
+    data: {
+      labels: sedes.map(s => s.nombre),
+      datasets: [{
+        data: sedes.map(s => s.total),
+        backgroundColor: ['#e8d5a3', '#7eb8d4', '#6fcf8e'],
+        borderColor: '#18181b',
+        borderWidth: 3,
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: {
+          position: 'bottom',
+          labels: { color: '#8a8790', font: { family: 'DM Mono', size: 10 }, padding: 12, boxWidth: 12 }
+        },
+        tooltip: {
+          backgroundColor: '#1f1f24',
+          borderColor: '#2a2a32',
+          borderWidth: 1,
+          callbacks: {
+            label: ctx => ctx.label + ': ' + fmt(ctx.parsed) + ' (' + (ctx.parsed / sedes.reduce((a,s)=>a+s.total,0)*100).toFixed(1) + '%)'
+          }
+        }
+      }
+    }
+  });
+}
+
+// ── PROYECCION ────────────────────────────────────────────────
+function renderProyeccion() {
+  const ejecutado = state.ejecutado || 18436820.26;
+  const presup = state.presup || 89719266.94;
+  const saldo = presup - ejecutado;
+
+  const ritmoSemanal = parseFloat(document.getElementById('sl-ritmo').value) * 1e6;
+  const dolarProy = parseFloat(document.getElementById('sl-dolar').value);
+
+  document.getElementById('lbl-ritmo').textContent = '$' + (ritmoSemanal/1e6).toFixed(1) + 'M';
+  document.getElementById('lbl-dolar').textContent = '$' + dolarProy.toLocaleString('es-AR');
+
+  const semanasRestantes = saldo / ritmoSemanal;
+  const diasRestantes = Math.ceil(semanasRestantes * 7);
+  const finDate = new Date();
+  finDate.setDate(finDate.getDate() + diasRestantes);
+
+  document.getElementById('proy-fin').textContent = finDate.toLocaleDateString('es-AR', { day:'2-digit', month:'short', year:'numeric' });
+  document.getElementById('proy-costo-total').textContent = fmt(presup);
+  document.getElementById('proy-usd').textContent = 'USD ' + fmt(presup / dolarProy, 0);
+}
+
+document.getElementById('sl-ritmo').addEventListener('input', renderProyeccion);
+document.getElementById('sl-dolar').addEventListener('input', renderProyeccion);
+
+// ── DEFAULTS (datos del PDF/xlsx) ─────────────────────────────
+function defaultPagos() {
+  return [
+    { descripcion: 'Adelanto certificado nro 1', tipo: 'Recibo', ndoc: 'Recibo #1', fecha: '27/04/2026', razon: 'ESTUDIO 866', monto: 2000000, estado: 'Pagado' },
+    { descripcion: 'Honorarios Profesionales', tipo: 'Factura', ndoc: '187', fecha: '12/05/2026', razon: 'LUCHETTI JULIETA', monto: 800000, estado: 'Pagado' },
+    { descripcion: 'Honorarios Profesionales', tipo: 'Factura', ndoc: '24', fecha: '12/05/2026', razon: 'SALENGO LANGO LAUTARO', monto: 1000000, estado: 'Pagado' },
+    { descripcion: '2do Adelanto certificado nro 1', tipo: 'Recibo', ndoc: 'Recibo #2', fecha: '12/05/2026', razon: 'ESTUDIO 866', monto: 2000000, estado: 'Pagado' },
+    { descripcion: 'Flete Materiales', tipo: 'Factura', ndoc: '371', fecha: '12/05/2026', razon: 'FIASCHE MIGUEL ANGEL', monto: 120000, estado: 'Pagado' },
+    { descripcion: 'Honorarios Profesionales', tipo: 'Factura', ndoc: '63', fecha: '12/05/2026', razon: 'ARAOZ FLORENCIA', monto: 600000, estado: 'Pagado' },
+    { descripcion: 'Material Corralón', tipo: 'Factura', ndoc: '5181', fecha: '13/05/2026', razon: 'RUVOLI', monto: 378000.50, estado: 'Pagado' },
+    { descripcion: 'Puertas', tipo: 'Factura', ndoc: '188215', fecha: '13/05/2026', razon: 'GALVYLAN', monto: 630023.46, estado: 'Pagado' },
+    { descripcion: 'Sanitarios', tipo: 'Factura', ndoc: '881', fecha: '13/05/2026', razon: 'SANITARIOS ZABALA', monto: 476724, estado: 'Pagado' },
+    { descripcion: 'Materiales Durlock', tipo: 'Factura', ndoc: '72338', fecha: '18/05/2026', razon: 'CENTRO SEC', monto: 2706740.64, estado: 'Pagado' },
+    { descripcion: 'Materiales Eléctricos', tipo: 'Factura', ndoc: '10069', fecha: '18/05/2026', razon: 'BRUSER', monto: 2963331.66, estado: 'Pagado' },
+    { descripcion: 'Vidrios', tipo: 'Factura', ndoc: '215', fecha: '18/05/2026', razon: 'JORGE ALARCON', monto: 450000, estado: 'Pagado' },
+    { descripcion: 'Certificado nro 1', tipo: 'Recibo', ndoc: 'Recibo #3', fecha: '20/05/2026', razon: 'ESTUDIO 866', monto: 4312000, estado: 'Pagado' },
+  ];
+}
+
+function defaultCurva() {
+  return [
+    { fecha: '27/04/2026', real: 2000000, teo: 0 },
+    { fecha: '12/05/2026', real: 5800000, teo: 1380296 },
+    { fecha: '12/05/2026', real: 6520000, teo: 1380296 },
+    { fecha: '13/05/2026', real: 7528024, teo: 2760593 },
+    { fecha: '13/05/2026', real: 8004748, teo: 2760593 },
+    { fecha: '18/05/2026', real: 10711489, teo: 9662075 },
+    { fecha: '18/05/2026', real: 13674820, teo: 9662075 },
+    { fecha: '18/05/2026', real: 14124820, teo: 9662075 },
+    { fecha: '20/05/2026', real: 18436820, teo: 12422668 },
+    { fecha: '15/07/2026', real: null, teo: 89719267 },
+  ];
+}
+
+// ── ERROR UI ──────────────────────────────────────────────────
+function showError(msg) {
+  const el = document.getElementById('error-msg');
+  el.textContent = msg;
+  el.style.display = 'block';
+}
+function hideError() {
+  document.getElementById('error-msg').style.display = 'none';
+}
+
+// ── INIT con datos default ────────────────────────────────────
+window.onload = () => {
+  // Defaults del snapshot más reciente (xlsx)
+  state.cotiz     = 1425;
+  state.presup    = 89719266.94;
+  state.presupUsd = 62960.89;
+  state.ejecutado = 29877003.64;
+  state.avancePct = 0.3330;
+  state.teoPct    = 0.277;  // 18/65 días
+  state.desvio    = 29877003.64 - (89719266.94 * 18/65);
+  state.saldo     = 89719266.94 - 29877003.64;
+  state.ritmo     = 1380296.41;
+  state.diasTrans = 18;
+  state.diasTotal = 65;
+  state.fInicio   = '11/05/2026';
+  state.fFin      = '15/07/2026';
+
+  renderAll();
+  document.getElementById('last-updated').textContent = 'Datos: snapshot xlsx · Actualizá para sincronizar';
+};
+</script>
+</body>
+</html>
