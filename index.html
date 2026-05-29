@@ -749,8 +749,8 @@ async function syncData() {
 
 // ── PARSER HOJA UNIFICADA "Martinez - E. Costa" ──────────────
 function parseSheetUnificado(rows) {
-  // Cotización dólar — celda F4 = fila índice 3, col índice 5
-  const cotizVal = parseNum(rows[3] && rows[3][5]);
+  // Cotización dólar — fila índice 3, col índice 4
+  const cotizVal = parseNum(rows[3] && rows[3][4]);
   state.cotiz = (cotizVal && cotizVal > 100 && cotizVal < 10000) ? cotizVal : 1425;
 
   // SEDES — filas 7,8,9 (índice) → Core Indoor, Pilates Hiit, Yoga by CORE
